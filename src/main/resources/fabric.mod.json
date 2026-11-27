@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "trickle",
+  "version": "${version}",
+  "name": "Trickle",
+  "description": "Earn Trickle coins slowly while you play, then spend them on loot boxes.",
+  "authors": ["PJ"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.trickle.Trickle"],
+    "client": ["dev.trickle.client.TrickleClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
