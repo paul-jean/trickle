@@ -3,6 +3,7 @@ package dev.trickle;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
@@ -10,6 +11,9 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import dev.trickle.item.LootBoxTier;
+import dev.trickle.item.ModItems;
 
 import java.util.Collection;
 
@@ -18,7 +22,9 @@ import static net.minecraft.commands.Commands.literal;
 
 /**
  * /trickle               show your balance
- * /trickle buy [count]   spend coins on loot boxes
+ * /trickle buy [count]   buy common loot boxes
+ * /trickle buy common|rare|epic [count]   buy loot boxes of a tier
+ * /trickle shop          list loot box prices
  * /trickle give|take|set <players> <amount>   (operators)
  * /trickle reload        reload config/trickle.json (operators)
  */
@@ -29,10 +35,8 @@ public final class TrickleCommands {
         dispatcher.register(literal("trickle")
                 .executes(TrickleCommands::balance)
                 .then(literal("balance").executes(TrickleCommands::balance))
-                .then(literal("buy")
-                        .executes(ctx -> buy(ctx, 1))
-                        .then(argument("count", IntegerArgumentType.integer(1, 64))
-                                .executes(ctx -> buy(ctx, IntegerArgumentType.getInteger(ctx, "count")))))
+                .then(literal("shop").executes(TrickleCommands::shop))
+                .then(buyCommand())
                 .then(literal("give").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(argument("players", EntityArgument.players())
                                 .then(argument("amount", LongArgumentType.longArg(0))
@@ -54,24 +58,50 @@ public final class TrickleCommands {
                         })));
     }
 
+    private static LiteralArgumentBuilder<CommandSourceStack> buyCommand() {
+        LiteralArgumentBuilder<CommandSourceStack> buy = literal("buy")
+                .executes(ctx -> buy(ctx, LootBoxTier.COMMON, 1))
+                .then(argument("count", IntegerArgumentType.integer(1, 64))
+                        .executes(ctx -> buy(ctx, LootBoxTier.COMMON, IntegerArgumentType.getInteger(ctx, "count"))));
+        for (LootBoxTier tier : LootBoxTier.values()) {
+            buy.then(literal(tier.commandName())
+                    .executes(ctx -> buy(ctx, tier, 1))
+                    .then(argument("count", IntegerArgumentType.integer(1, 64))
+                            .executes(ctx -> buy(ctx, tier, IntegerArgumentType.getInteger(ctx, "count")))));
+        }
+        return buy;
+    }
+
+    private static int shop(CommandContext<CommandSourceStack> ctx) {
+        TrickleConfig cfg = Trickle.config();
+        ctx.getSource().sendSuccess(() -> Component.translatable("trickle.msg.shop"), false);
+        for (LootBoxTier tier : LootBoxTier.values()) {
+            ctx.getSource().sendSuccess(() -> Component.translatable("trickle.msg.shop_line",
+                    ModItems.lootBox(tier).getName(new ItemStack(ModItems.lootBox(tier))),
+                    tier.cost(cfg), tier.commandName()), false);
+        }
+        return 1;
+    }
+
     private static int balance(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         long balance = Economy.balance(player);
-        ctx.getSource().sendSuccess(() -> Component.translatable("trickle.msg.balance",
-                balance, Trickle.config().lootBoxCost), false);
+        ctx.getSource().sendSuccess(() -> Component.translatable("trickle.msg.balance", balance), false);
+        shop(ctx);
         return (int) Math.min(Integer.MAX_VALUE, balance);
     }
 
-    private static int buy(CommandContext<CommandSourceStack> ctx, int count) throws CommandSyntaxException {
+    private static int buy(CommandContext<CommandSourceStack> ctx, LootBoxTier tier, int count) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
-        long cost = (long) Trickle.config().lootBoxCost * count;
-        if (!Economy.buyLootBoxes(player, count)) {
+        long cost = (long) tier.cost(Trickle.config()) * count;
+        Component name = ModItems.lootBox(tier).getName(new ItemStack(ModItems.lootBox(tier)));
+        if (!Economy.buyLootBoxes(player, tier, count)) {
             ctx.getSource().sendFailure(Component.translatable("trickle.msg.too_poor",
-                    count, cost, Economy.balance(player)));
+                    count, name, cost, Economy.balance(player)));
             return 0;
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("trickle.msg.bought",
-                count, cost, Economy.balance(player)), false);
+                count, name, cost, Economy.balance(player)), false);
         return count;
     }
 

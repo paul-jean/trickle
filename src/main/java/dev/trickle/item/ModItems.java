@@ -8,18 +8,34 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Rarity;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 public final class ModItems {
-    private static final ResourceKey<Item> LOOT_BOX_KEY = ResourceKey.create(Registries.ITEM, Trickle.id("loot_box"));
+    private static final Map<LootBoxTier, Item> LOOT_BOXES = new EnumMap<>(LootBoxTier.class);
 
-    public static final Item LOOT_BOX = Registry.register(BuiltInRegistries.ITEM, LOOT_BOX_KEY,
-            new LootBoxItem(new Item.Properties().setId(LOOT_BOX_KEY).stacksTo(64).rarity(Rarity.RARE)));
+    static {
+        for (LootBoxTier tier : LootBoxTier.values()) {
+            ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Trickle.id(tier.id));
+            LOOT_BOXES.put(tier, Registry.register(BuiltInRegistries.ITEM, key,
+                    new LootBoxItem(tier, new Item.Properties().setId(key).stacksTo(64).rarity(tier.rarity))));
+        }
+    }
+
+    public static final Item LOOT_BOX = lootBox(LootBoxTier.COMMON);
+    public static final Item RARE_LOOT_BOX = lootBox(LootBoxTier.RARE);
+    public static final Item EPIC_LOOT_BOX = lootBox(LootBoxTier.EPIC);
 
     private ModItems() {}
 
+    public static Item lootBox(LootBoxTier tier) {
+        return LOOT_BOXES.get(tier);
+    }
+
     public static void init() {
-        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES)
-                .register(output -> output.accept(LOOT_BOX));
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(output -> {
+            for (LootBoxTier tier : LootBoxTier.values()) output.accept(lootBox(tier));
+        });
     }
 }

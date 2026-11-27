@@ -1,6 +1,7 @@
 package dev.trickle;
 
 import dev.trickle.data.TrickleState;
+import dev.trickle.item.LootBoxTier;
 import dev.trickle.item.ModItems;
 import dev.trickle.net.BalancePayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -8,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Prediction;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
@@ -101,17 +103,18 @@ public final class Economy {
         sync(player);
     }
 
-    /** Spends coins on loot boxes. Returns false, changing nothing, if the player can't afford them. */
-    public static boolean buyLootBoxes(ServerPlayer player, int count) {
+    /** Spends coins on loot boxes of one tier. Returns false, changing nothing, if the player can't afford them. */
+    public static boolean buyLootBoxes(ServerPlayer player, LootBoxTier tier, int count) {
         TrickleState state = TrickleState.get(player.level().getServer());
-        long cost = (long) Trickle.config().lootBoxCost * count;
+        long cost = (long) tier.cost(Trickle.config()) * count;
         long balance = state.balance(player.getUUID());
         if (balance < cost) return false;
         state.setBalance(player.getUUID(), balance - cost);
+        Item box = ModItems.lootBox(tier);
         int left = count;
         while (left > 0) {
-            int n = Math.min(left, ModItems.LOOT_BOX.getDefaultMaxStackSize());
-            player.getInventory().placeItemBackInInventory(new ItemStack(ModItems.LOOT_BOX, n), Prediction.SERVER_ONLY);
+            int n = Math.min(left, box.getDefaultMaxStackSize());
+            player.getInventory().placeItemBackInInventory(new ItemStack(box, n), Prediction.SERVER_ONLY);
             left -= n;
         }
         sync(player);

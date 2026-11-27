@@ -3,11 +3,15 @@
   "item.trickle.loot_box.tooltip": "Right-click to open",
   "trickle.hud.balance": "%s coins",
   "trickle.msg.earned": "+%s Trickle coin(s). Balance: %s",
-  "trickle.msg.balance": "You have %s Trickle coins. A loot box costs %s.",
-  "trickle.msg.bought": "Bought %s loot box(es) for %s coins. Balance: %s",
-  "trickle.msg.too_poor": "Not enough coins: %s loot box(es) cost %s, you have %s.",
+  "trickle.msg.balance": "You have %s Trickle coins.",
+  "trickle.msg.bought": "Bought %s %s for %s coins. Balance: %s",
+  "trickle.msg.too_poor": "Not enough coins: %s %s cost %s, you have %s.",
   "trickle.msg.opened": "You opened a loot box!",
-  "key.trickle.buy": "Buy loot box",
+  "key.trickle.buy": "Buy common loot box",
   "key.trickle.toggle_hud": "Toggle coin display",
-  "key.category.trickle.main": "Trickle"
+  "key.category.trickle.main": "Trickle",
+  "item.trickle.rare_loot_box": "Rare Loot Box",
+  "item.trickle.epic_loot_box": "Epic Loot Box",
+  "trickle.msg.shop": "Loot boxes for sale:",
+  "trickle.msg.shop_line": " %s: %s coins  (/trickle buy %s)"
 }

@@ -24,13 +24,19 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import java.util.function.Consumer;
 
-/** A box that rolls the trickle:loot_box loot table when right-clicked. Datapacks can override that table. */
+/** A box that rolls its tier's loot table (trickle:<tier id>) when right-clicked. Datapacks can override the tables. */
 public class LootBoxItem extends Item {
-    public static final ResourceKey<LootTable> LOOT_TABLE =
-            ResourceKey.create(Registries.LOOT_TABLE, Trickle.id("loot_box"));
+    private final LootBoxTier tier;
+    private final ResourceKey<LootTable> lootTable;
 
-    public LootBoxItem(Properties properties) {
+    public LootBoxItem(LootBoxTier tier, Properties properties) {
         super(properties);
+        this.tier = tier;
+        this.lootTable = ResourceKey.create(Registries.LOOT_TABLE, Trickle.id(tier.id));
+    }
+
+    public LootBoxTier tier() {
+        return tier;
     }
 
     @Override
@@ -38,7 +44,7 @@ public class LootBoxItem extends Item {
         ItemStack stack = user.getItemInHand(hand);
         if (user instanceof ServerPlayer player) {
             var serverLevel = player.level();
-            LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(LOOT_TABLE);
+            LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(lootTable);
             LootParams params = new LootParams.Builder(serverLevel)
                     .withParameter(LootContextParams.ORIGIN, player.position())
                     .withParameter(LootContextParams.THIS_ENTITY, player)
@@ -48,8 +54,10 @@ public class LootBoxItem extends Item {
                 player.getInventory().placeItemBackInInventory(drop, Prediction.SERVER_ONLY);
             }
             stack.consume(1, player);
-            serverLevel.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP,
-                    SoundSource.PLAYERS, 0.6f, 1.4f);
+            float pitch = switch (tier) { case COMMON -> 1.4f; case RARE -> 1.0f; case EPIC -> 0.7f; };
+            serverLevel.playSound(null, player.blockPosition(),
+                    tier == LootBoxTier.EPIC ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.PLAYER_LEVELUP,
+                    SoundSource.PLAYERS, 0.6f, pitch);
             player.sendOverlayMessage(Component.translatable("trickle.msg.opened").withStyle(ChatFormatting.GOLD));
         }
         return InteractionResult.SUCCESS;
