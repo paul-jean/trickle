@@ -4,10 +4,11 @@ import dev.trickle.data.TrickleState;
 import dev.trickle.item.ModItems;
 import dev.trickle.net.BalancePayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.item.ItemStack;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Prediction;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,8 +20,8 @@ public final class Economy {
     private static final int SYNC_INTERVAL = 100;   // refresh the HUD every 5 seconds
 
     private record Look(double x, double y, double z, float yaw, float pitch) {
-        static Look of(ServerPlayerEntity p) {
-            return new Look(p.getX(), p.getY(), p.getZ(), p.getYaw(), p.getPitch());
+        static Look of(ServerPlayer p) {
+            return new Look(p.getX(), p.getY(), p.getZ(), p.getYRot(), p.getXRot());
         }
     }
 
@@ -37,8 +38,8 @@ public final class Economy {
         TrickleState state = TrickleState.get(server);
         boolean sync = tick % SYNC_INTERVAL == 0;
 
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            UUID id = player.getUuid();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID id = player.getUUID();
             if (player.isSpectator() || !isActive(player, cfg)) {
                 if (sync) sync(player);
                 continue;
@@ -54,18 +55,18 @@ public final class Economy {
                 if (account.balance != before) {
                     changed = true;
                     if (cfg.announcePayouts) {
-                        player.sendMessage(Text.translatable("trickle.msg.earned",
-                                account.balance - before, account.balance), true);
+                        player.sendOverlayMessage(Component.translatable("trickle.msg.earned",
+                                account.balance - before, account.balance));
                     }
                 }
             }
-            state.markDirty();
+            state.setDirty();
             if (changed || sync) sync(player);
         }
     }
 
-    private static boolean isActive(ServerPlayerEntity player, TrickleConfig cfg) {
-        UUID id = player.getUuid();
+    private static boolean isActive(ServerPlayer player, TrickleConfig cfg) {
+        UUID id = player.getUUID();
         Look now = Look.of(player);
         if (!now.equals(lastLook.get(id))) {
             lastLook.put(id, now);
@@ -80,47 +81,47 @@ public final class Economy {
         return cfg.maxBalance > 0 ? Math.min(value, cfg.maxBalance) : value;
     }
 
-    public static void onJoin(ServerPlayerEntity player) {
-        lastLook.put(player.getUuid(), Look.of(player));
-        lastActiveTick.put(player.getUuid(), tick);
+    public static void onJoin(ServerPlayer player) {
+        lastLook.put(player.getUUID(), Look.of(player));
+        lastActiveTick.put(player.getUUID(), tick);
         sync(player);
     }
 
-    public static void onLeave(ServerPlayerEntity player) {
-        lastLook.remove(player.getUuid());
-        lastActiveTick.remove(player.getUuid());
+    public static void onLeave(ServerPlayer player) {
+        lastLook.remove(player.getUUID());
+        lastActiveTick.remove(player.getUUID());
     }
 
-    public static long balance(ServerPlayerEntity player) {
-        return TrickleState.get(player.getServer()).balance(player.getUuid());
+    public static long balance(ServerPlayer player) {
+        return TrickleState.get(player.level().getServer()).balance(player.getUUID());
     }
 
-    public static void setBalance(ServerPlayerEntity player, long value) {
-        TrickleState.get(player.getServer()).setBalance(player.getUuid(), cap(value, Trickle.config()));
+    public static void setBalance(ServerPlayer player, long value) {
+        TrickleState.get(player.level().getServer()).setBalance(player.getUUID(), cap(value, Trickle.config()));
         sync(player);
     }
 
     /** Spends coins on loot boxes. Returns false, changing nothing, if the player can't afford them. */
-    public static boolean buyLootBoxes(ServerPlayerEntity player, int count) {
-        TrickleState state = TrickleState.get(player.getServer());
+    public static boolean buyLootBoxes(ServerPlayer player, int count) {
+        TrickleState state = TrickleState.get(player.level().getServer());
         long cost = (long) Trickle.config().lootBoxCost * count;
-        long balance = state.balance(player.getUuid());
+        long balance = state.balance(player.getUUID());
         if (balance < cost) return false;
-        state.setBalance(player.getUuid(), balance - cost);
+        state.setBalance(player.getUUID(), balance - cost);
         int left = count;
         while (left > 0) {
-            int n = Math.min(left, ModItems.LOOT_BOX.getMaxCount());
-            player.getInventory().offerOrDrop(new ItemStack(ModItems.LOOT_BOX, n));
+            int n = Math.min(left, ModItems.LOOT_BOX.getDefaultMaxStackSize());
+            player.getInventory().placeItemBackInInventory(new ItemStack(ModItems.LOOT_BOX, n), Prediction.SERVER_ONLY);
             left -= n;
         }
         sync(player);
         return true;
     }
 
-    public static void sync(ServerPlayerEntity player) {
-        if (!ServerPlayNetworking.canSend(player, BalancePayload.ID)) return; // player lacks the client mod
+    public static void sync(ServerPlayer player) {
+        if (!ServerPlayNetworking.canSend(player, BalancePayload.TYPE)) return; // player lacks the client mod
         TrickleConfig cfg = Trickle.config();
-        TrickleState.Account a = TrickleState.get(player.getServer()).account(player.getUuid());
+        TrickleState.Account a = TrickleState.get(player.level().getServer()).account(player.getUUID());
         float progress = Math.min(1f, a.progressTicks / (cfg.secondsPerPayout * 20f));
         ServerPlayNetworking.send(player, new BalancePayload(a.balance, progress, cfg.lootBoxCost));
     }

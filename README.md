@@ -1,6 +1,6 @@
 # Trickle
 
-A Fabric mod for Minecraft Java **1.21.1** that adds a slow "trickle" currency. Players earn coins just by actively playing, then spend them on loot boxes.
+A Fabric mod for Minecraft Java **26.3** that adds a slow "trickle" currency. Players earn coins just by actively playing, then spend them on loot boxes.
 
 Install the mod on **both the server and every client** (plus Fabric API). It also works in singleplayer and LAN worlds. The server holds every balance and does all the buying and opening, so a modified client can't give itself coins or items.
 
@@ -36,8 +36,10 @@ Install the mod on **both the server and every client** (plus Fabric API). It al
 
 Change the loot with a datapack that overrides `data/trickle/loot_table/loot_box.json`.
 
-Balances are saved in the world folder at `data/trickle.dat`.
+Balances are saved in the world folder at `data/trickle/accounts.dat`.
 
 ## Building
 
-Needs Java 21. Run `./gradlew build`; the mod jar ends up in `build/libs/`. Run `./gradlew runClient` or `./gradlew runServer` to test.
+Needs Java 25. Run `./gradlew build`; the mod jar ends up in `build/libs/`.
+
+`./gradlew runGameTest` boots a test server and checks buying, opening loot boxes, earning while active, and not earning while idle. It accepts the Minecraft EULA for that test server. `./gradlew runClient` and `./gradlew runServer` start a dev client or server.

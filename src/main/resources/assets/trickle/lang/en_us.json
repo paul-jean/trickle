@@ -7,7 +7,7 @@
   "trickle.msg.bought": "Bought %s loot box(es) for %s coins. Balance: %s",
   "trickle.msg.too_poor": "Not enough coins: %s loot box(es) cost %s, you have %s.",
   "trickle.msg.opened": "You opened a loot box!",
-  "key.categories.trickle": "Trickle",
   "key.trickle.buy": "Buy loot box",
-  "key.trickle.toggle_hud": "Toggle coin display"
+  "key.trickle.toggle_hud": "Toggle coin display",
+  "key.category.trickle.main": "Trickle"
 }

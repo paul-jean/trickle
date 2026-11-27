@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "trickle-test",
+  "version": "1.0.0",
+  "name": "Trickle game tests",
+  "environment": "*",
+  "entrypoints": { "fabric-gametest": ["dev.trickle.test.TrickleGameTests"] },
+  "depends": { "trickle": "*" }
+}

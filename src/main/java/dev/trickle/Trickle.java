@@ -7,7 +7,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,7 @@ public class Trickle implements ModInitializer {
     private static TrickleConfig config;
 
     public static Identifier id(String path) {
-        return Identifier.of(MOD_ID, path);
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     public static TrickleConfig config() {
@@ -33,7 +33,7 @@ public class Trickle implements ModInitializer {
     public void onInitialize() {
         reloadConfig();
         ModItems.init();
-        PayloadTypeRegistry.playS2C().register(BalancePayload.ID, BalancePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(BalancePayload.TYPE, BalancePayload.CODEC);
 
         ServerTickEvents.END_SERVER_TICK.register(Economy::onServerTick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Economy.onJoin(handler.getPlayer()));

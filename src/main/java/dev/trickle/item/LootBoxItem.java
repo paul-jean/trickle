@@ -1,60 +1,64 @@
 package dev.trickle.item;
 
 import dev.trickle.Trickle;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.loot.LootTable;
-import net.minecraft.loot.context.LootContextParameterSet;
-import net.minecraft.loot.context.LootContextParameters;
-import net.minecraft.loot.context.LootContextTypes;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Prediction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
-import java.util.List;
+import java.util.function.Consumer;
 
-/** A box that rolls the trickle:loot_box loot table when right-clicked. Server packs can override that table. */
+/** A box that rolls the trickle:loot_box loot table when right-clicked. Datapacks can override that table. */
 public class LootBoxItem extends Item {
-    public static final RegistryKey<LootTable> LOOT_TABLE =
-            RegistryKey.of(RegistryKeys.LOOT_TABLE, Trickle.id("loot_box"));
+    public static final ResourceKey<LootTable> LOOT_TABLE =
+            ResourceKey.create(Registries.LOOT_TABLE, Trickle.id("loot_box"));
 
-    public LootBoxItem(Settings settings) {
-        super(settings);
+    public LootBoxItem(Properties properties) {
+        super(properties);
     }
 
     @Override
-    public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-        ItemStack stack = user.getStackInHand(hand);
-        if (world instanceof ServerWorld serverWorld && user instanceof ServerPlayerEntity player) {
-            LootTable table = serverWorld.getServer().getReloadableRegistries().getLootTable(LOOT_TABLE);
-            LootContextParameterSet params = new LootContextParameterSet.Builder(serverWorld)
-                    .add(LootContextParameters.ORIGIN, player.getPos())
-                    .add(LootContextParameters.THIS_ENTITY, player)
-                    .luck(player.getLuck())
-                    .build(LootContextTypes.GIFT);
-            for (ItemStack drop : table.generateLoot(params)) {
-                player.getInventory().offerOrDrop(drop);
+    public InteractionResult use(Level level, Player user, InteractionHand hand) {
+        ItemStack stack = user.getItemInHand(hand);
+        if (user instanceof ServerPlayer player) {
+            var serverLevel = player.level();
+            LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(LOOT_TABLE);
+            LootParams params = new LootParams.Builder(serverLevel)
+                    .withParameter(LootContextParams.ORIGIN, player.position())
+                    .withParameter(LootContextParams.THIS_ENTITY, player)
+                    .withLuck(player.getLuck())
+                    .create(LootContextParamSets.GIFT);
+            for (ItemStack drop : table.getRandomItems(params)) {
+                player.getInventory().placeItemBackInInventory(drop, Prediction.SERVER_ONLY);
             }
-            stack.decrementUnlessCreative(1, player);
-            world.playSound(null, player.getBlockPos(), SoundEvents.ENTITY_PLAYER_LEVELUP,
-                    SoundCategory.PLAYERS, 0.6f, 1.4f);
-            player.sendMessage(Text.translatable("trickle.msg.opened").formatted(Formatting.GOLD), true);
+            stack.consume(1, player);
+            serverLevel.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP,
+                    SoundSource.PLAYERS, 0.6f, 1.4f);
+            player.sendOverlayMessage(Component.translatable("trickle.msg.opened").withStyle(ChatFormatting.GOLD));
         }
-        return TypedActionResult.success(stack, world.isClient());
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-        tooltip.add(Text.translatable("item.trickle.loot_box.tooltip").formatted(Formatting.GRAY));
+    @SuppressWarnings("deprecation")
+    public void appendHoverText(ItemStack stack, TooltipContext context, TooltipDisplay display,
+                                Consumer<Component> builder, TooltipFlag flag) {
+        builder.accept(Component.translatable("item.trickle.loot_box.tooltip").withStyle(ChatFormatting.GRAY));
     }
 }
