@@ -39,28 +39,54 @@ public class LootBoxItem extends Item {
         return tier;
     }
 
+    /**
+     * Set by the client mod: shows the "open this box?" dialog. It is null on a dedicated server.
+     */
+    public static ClientConfirmHook clientConfirmHook;
+
+    @FunctionalInterface
+    public interface ClientConfirmHook {
+        void askToOpen(LootBoxItem item, ItemStack stack, InteractionHand hand);
+    }
+
+    /**
+     * Right-click asks for confirmation first; the client then sends OpenLootBoxPayload and the server opens the box.
+     * Sneak + right-click skips the question and opens straight away.
+     */
     @Override
     public InteractionResult use(Level level, Player user, InteractionHand hand) {
         ItemStack stack = user.getItemInHand(hand);
-        if (user instanceof ServerPlayer player) {
-            var serverLevel = player.level();
-            LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(lootTable);
-            LootParams params = new LootParams.Builder(serverLevel)
-                    .withParameter(LootContextParams.ORIGIN, player.position())
-                    .withParameter(LootContextParams.THIS_ENTITY, player)
-                    .withLuck(player.getLuck())
-                    .create(LootContextParamSets.GIFT);
-            for (ItemStack drop : table.getRandomItems(params)) {
-                player.getInventory().placeItemBackInInventory(drop, Prediction.SERVER_ONLY);
-            }
-            stack.consume(1, player);
-            float pitch = switch (tier) { case COMMON -> 1.4f; case RARE -> 1.0f; case EPIC -> 0.7f; };
-            serverLevel.playSound(null, player.blockPosition(),
-                    tier == LootBoxTier.EPIC ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.PLAYER_LEVELUP,
-                    SoundSource.PLAYERS, 0.6f, pitch);
-            player.sendOverlayMessage(Component.translatable("trickle.msg.opened").withStyle(ChatFormatting.GOLD));
+        if (user.isShiftKeyDown()) {
+            if (user instanceof ServerPlayer player) open(player, hand);
+            return InteractionResult.SUCCESS;
         }
-        return InteractionResult.SUCCESS;
+        if (level.isClientSide() && clientConfirmHook != null) {
+            clientConfirmHook.askToOpen(this, stack, hand);
+        }
+        return InteractionResult.CONSUME;
+    }
+
+    /** Opens the box in the given hand: rolls its loot table, gives the items, and uses up one box. */
+    public static boolean open(ServerPlayer player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!(stack.getItem() instanceof LootBoxItem box)) return false;
+        var serverLevel = player.level();
+        LootTable table = serverLevel.getServer().reloadableRegistries().getLootTable(box.lootTable);
+        LootParams params = new LootParams.Builder(serverLevel)
+                .withParameter(LootContextParams.ORIGIN, player.position())
+                .withParameter(LootContextParams.THIS_ENTITY, player)
+                .withLuck(player.getLuck())
+                .create(LootContextParamSets.GIFT);
+        stack.consume(1, player);
+        for (ItemStack drop : table.getRandomItems(params)) {
+            player.getInventory().placeItemBackInInventory(drop, Prediction.SERVER_ONLY);
+        }
+        float pitch = switch (box.tier) { case COMMON -> 1.4f; case RARE -> 1.0f; case EPIC -> 0.7f; };
+        serverLevel.playSound(null, player.blockPosition(),
+                box.tier == LootBoxTier.EPIC ? SoundEvents.UI_TOAST_CHALLENGE_COMPLETE : SoundEvents.PLAYER_LEVELUP,
+                SoundSource.PLAYERS, 0.6f, pitch);
+        player.sendOverlayMessage(Component.translatable("trickle.msg.opened").withStyle(ChatFormatting.GOLD));
+        return true;
     }
 
     @Override

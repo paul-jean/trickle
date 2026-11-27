@@ -8,7 +8,7 @@ Install the mod on **both the server and every client** (plus Fabric API). It al
 
 - Every 5 minutes of active play earns 1 coin. Players who haven't moved or looked around for 3 minutes stop earning. Spectators don't earn.
 - Progress toward the next coin is saved, so logging out doesn't reset it.
-- There are three loot box tiers. Right-click a box to open it.
+- There are three loot box tiers. Right-click a box and confirm in the dialog to open it, or sneak + right-click to open it without the question.
 
 | Box | Price | What's inside |
 |---|---|---|

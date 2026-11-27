@@ -1,7 +1,10 @@
 package dev.trickle;
 
 import dev.trickle.item.ModItems;
+import dev.trickle.item.LootBoxItem;
 import dev.trickle.net.BalancePayload;
+import dev.trickle.net.OpenLootBoxPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -34,6 +37,10 @@ public class Trickle implements ModInitializer {
         reloadConfig();
         ModItems.init();
         PayloadTypeRegistry.clientboundPlay().register(BalancePayload.TYPE, BalancePayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(OpenLootBoxPayload.TYPE, OpenLootBoxPayload.CODEC);
+        // Sent after the player confirms the dialog. The server re-checks the hand, so a client can only open boxes it holds.
+        ServerPlayNetworking.registerGlobalReceiver(OpenLootBoxPayload.TYPE,
+                (payload, context) -> context.server().execute(() -> LootBoxItem.open(context.player(), payload.hand())));
 
         ServerTickEvents.END_SERVER_TICK.register(Economy::onServerTick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Economy.onJoin(handler.getPlayer()));

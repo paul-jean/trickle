@@ -1,6 +1,6 @@
 {
   "item.trickle.loot_box": "Loot Box",
-  "item.trickle.loot_box.tooltip": "Right-click to open",
+  "item.trickle.loot_box.tooltip": "Right-click to open (sneak to skip the question)",
   "trickle.hud.balance": "%s coins",
   "trickle.msg.earned": "+%s Trickle coin(s). Balance: %s",
   "trickle.msg.balance": "You have %s Trickle coins.",
@@ -13,5 +13,8 @@
   "item.trickle.rare_loot_box": "Rare Loot Box",
   "item.trickle.epic_loot_box": "Epic Loot Box",
   "trickle.msg.shop": "Loot boxes for sale:",
-  "trickle.msg.shop_line": " %s: %s coins  (/trickle buy %s)"
+  "trickle.msg.shop_line": " %s: %s coins  (/trickle buy %s)",
+  "trickle.confirm.title": "Open %s?",
+  "trickle.confirm.message": "You have %s of these. Opening uses one.\nTip: sneak + right-click opens without asking.",
+  "trickle.confirm.open": "Open it!"
 }

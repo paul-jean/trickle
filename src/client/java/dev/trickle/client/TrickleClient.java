@@ -2,7 +2,11 @@ package dev.trickle.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.trickle.Trickle;
+import dev.trickle.item.LootBoxItem;
 import dev.trickle.net.BalancePayload;
+import dev.trickle.net.OpenLootBoxPayload;
+import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.network.chat.CommonComponents;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
@@ -28,6 +32,22 @@ public class TrickleClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(BalancePayload.TYPE,
                 (payload, context) -> context.client().execute(() -> latest = payload));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> latest = null);
+
+        LootBoxItem.clientConfirmHook = (item, stack, hand) -> {
+            Minecraft client = Minecraft.getInstance();
+            int count = stack.getCount();
+            Component name = stack.getHoverName();
+            // open the dialog after this tick's input handling finishes
+            client.execute(() -> client.gui.setScreen(new ConfirmScreen(
+                    confirmed -> {
+                        if (confirmed) ClientPlayNetworking.send(new OpenLootBoxPayload(hand));
+                        client.gui.setScreen(null);
+                    },
+                    Component.translatable("trickle.confirm.title", name),
+                    Component.translatable("trickle.confirm.message", count),
+                    Component.translatable("trickle.confirm.open"),
+                    CommonComponents.GUI_CANCEL)));
+        };
 
         KeyMapping.Category category = KeyMapping.Category.register(Trickle.id("main"));
         buyKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(

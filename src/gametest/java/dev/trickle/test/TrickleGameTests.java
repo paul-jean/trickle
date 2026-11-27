@@ -3,6 +3,7 @@ package dev.trickle.test;
 import dev.trickle.Economy;
 import dev.trickle.Trickle;
 import dev.trickle.TrickleConfig;
+import dev.trickle.item.LootBoxItem;
 import dev.trickle.item.LootBoxTier;
 import dev.trickle.item.ModItems;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -56,9 +57,35 @@ public class TrickleGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         player.getAbilities().instabuild = false; // mock players are creative; make the box get used up
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.LOOT_BOX, 3));
-        ModItems.LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        LootBoxItem.open(player, InteractionHand.MAIN_HAND);
         helper.assertValueEqual(countOf(player, ModItems.LOOT_BOX), 2, "loot boxes left");
         helper.assertTrue(countOther(player, ModItems.LOOT_BOX) >= 2, "box should give at least 2 items");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void rightClickWaitsForConfirmation(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.getAbilities().instabuild = false;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.LOOT_BOX, 2));
+        // plain right-click on the server does nothing: the client asks first and then sends OpenLootBoxPayload
+        ModItems.LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        helper.assertValueEqual(countOf(player, ModItems.LOOT_BOX), 2, "boxes after unconfirmed right-click");
+        helper.assertValueEqual(countOther(player, ModItems.LOOT_BOX), 0, "loot after unconfirmed right-click");
+        // sneak + right-click skips the question
+        player.setShiftKeyDown(true);
+        ModItems.LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        helper.assertValueEqual(countOf(player, ModItems.LOOT_BOX), 1, "boxes after sneak right-click");
+        helper.assertTrue(countOther(player, ModItems.LOOT_BOX) >= 2, "sneak right-click should open the box");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void confirmingWithoutABoxDoesNothing(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(net.minecraft.world.item.Items.DIRT, 1));
+        helper.assertFalse(LootBoxItem.open(player, InteractionHand.MAIN_HAND), "should refuse when not holding a box");
+        helper.assertValueEqual(countOf(player, net.minecraft.world.item.Items.DIRT), 1, "dirt untouched");
         helper.succeed();
     }
 
@@ -81,7 +108,7 @@ public class TrickleGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         player.getAbilities().instabuild = false;
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.RARE_LOOT_BOX, 1));
-        ModItems.RARE_LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        LootBoxItem.open(player, InteractionHand.MAIN_HAND);
         helper.assertValueEqual(countOf(player, ModItems.RARE_LOOT_BOX), 0, "rare boxes left");
         // 3-4 rolls plus a guaranteed enchanted diamond piece (identical rolls may merge into one stack)
         helper.assertTrue(countOther(player, ModItems.RARE_LOOT_BOX) >= 4, "rare box should give at least 4 items, got " + describe(player));
@@ -94,7 +121,7 @@ public class TrickleGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         player.getAbilities().instabuild = false;
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.EPIC_LOOT_BOX, 1));
-        ModItems.EPIC_LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        LootBoxItem.open(player, InteractionHand.MAIN_HAND);
         helper.assertValueEqual(countOf(player, ModItems.EPIC_LOOT_BOX), 0, "epic boxes left");
         // a jackpot item, an enchanted piece of gear, and 2-3 more rolls (identical rolls may merge)
         helper.assertTrue(countOther(player, ModItems.EPIC_LOOT_BOX) >= 4, "epic box should give at least 4 items, got " + describe(player));
@@ -111,7 +138,7 @@ public class TrickleGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         player.getAbilities().instabuild = false;
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.LOOT_BOX, 10));
-        for (int i = 0; i < 10; i++) ModItems.LOOT_BOX.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        for (int i = 0; i < 10; i++) LootBoxItem.open(player, InteractionHand.MAIN_HAND);
         boolean bigStack = false;
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack s = player.getInventory().getItem(i);
