@@ -16,8 +16,12 @@ public class TrickleConfig {
     public int secondsPerPayout = 300;
     /** Coins given per payout. */
     public int coinsPerPayout = 1;
-    /** Coins one loot box costs. */
+    /** Coins a common loot box costs. */
     public int lootBoxCost = 10;
+    /** Coins a rare loot box costs. */
+    public int rareLootBoxCost = 50;
+    /** Coins an epic loot box costs. */
+    public int epicLootBoxCost = 150;
     /** Players who haven't moved or looked around for this long stop earning. 0 disables the check. */
     public int afkTimeoutSeconds = 180;
     /** Highest balance a player can hold. 0 means no cap. */
@@ -51,6 +55,8 @@ public class TrickleConfig {
         secondsPerPayout = Math.max(1, secondsPerPayout);
         coinsPerPayout = Math.max(0, coinsPerPayout);
         lootBoxCost = Math.max(0, lootBoxCost);
+        rareLootBoxCost = Math.max(0, rareLootBoxCost);
+        epicLootBoxCost = Math.max(0, epicLootBoxCost);
         afkTimeoutSeconds = Math.max(0, afkTimeoutSeconds);
         maxBalance = Math.max(0, maxBalance);
     }

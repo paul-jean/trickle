@@ -1,13 +1,16 @@
 package dev.trickle;
 
 import dev.trickle.item.ModItems;
+import dev.trickle.item.LootBoxItem;
 import dev.trickle.net.BalancePayload;
+import dev.trickle.net.OpenLootBoxPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +21,7 @@ public class Trickle implements ModInitializer {
     private static TrickleConfig config;
 
     public static Identifier id(String path) {
-        return Identifier.of(MOD_ID, path);
+        return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }
 
     public static TrickleConfig config() {
@@ -33,7 +36,11 @@ public class Trickle implements ModInitializer {
     public void onInitialize() {
         reloadConfig();
         ModItems.init();
-        PayloadTypeRegistry.playS2C().register(BalancePayload.ID, BalancePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(BalancePayload.TYPE, BalancePayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(OpenLootBoxPayload.TYPE, OpenLootBoxPayload.CODEC);
+        // Sent after the player confirms the dialog. The server re-checks the hand, so a client can only open boxes it holds.
+        ServerPlayNetworking.registerGlobalReceiver(OpenLootBoxPayload.TYPE,
+                (payload, context) -> context.server().execute(() -> LootBoxItem.open(context.player(), payload.hand())));
 
         ServerTickEvents.END_SERVER_TICK.register(Economy::onServerTick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Economy.onJoin(handler.getPlayer()));
